@@ -2,17 +2,11 @@ import requests
 import selenium
 from datetime import datetime
 from twocaptcha import TwoCaptcha
-from bs4 import BeautifulSoup
 import sketches
-"""
-# Fill:
-<img class="imgDesafio" name="imgDesafio" id="imgDesafio"> [Captcha]
-<input type="text" name="txtCodigo"> [Captcha]
-<input type="text" name="txtDocCNH"> [CNH]
-<input type="text" name="txtDocPrincipal">] [CPF]
-"""
+import scrapy
 
 def crawler():
+
 	two_captcha_key = sketches.two_captcha_key
 	cpf = sketches.cpf
 	registro = sketches.registro
@@ -20,7 +14,6 @@ def crawler():
 	url_detran_sc = "http://consultas.detrannet.sc.gov.br/servicos/ConsultaPontuacaoCondutor.asp"
 	url_captcha_detran_sc = "http://consultas.detrannet.sc.gov.br/Servicos/BitMap.asp?{}"
 
-#%% 
 	get_response_detran = requests.get(url_detran_sc)
 
 	session_cookies = {
@@ -31,7 +24,6 @@ def crawler():
 		get_response_detran.headers["Date"], "%a, %d %b %Y %X %Z"
 	).strftime("%s")
 
-#%% 
 	captcha_image_get_response = requests.get(
 		url_captcha_detran_sc.format(detran_get_request_timestamp),
 		cookies=session_cookies,
@@ -56,11 +48,11 @@ def crawler():
 			cookies=session_cookies,
 		)
 	
-	#TODO
-	soup = BeautifulSoup(detran_post_response.text, 'html.parser')
-	scorediv = soup.find('div', attrs={'id':'divPontuacao'})
-
-
+		selector = scrapy.Selector(text=detran_post_response.text, type="html")
+		data_arr = selector.xpath("//div[@id='divPontuacao']/table[last()]//td/text()").getall()
+		name = selector.xpath("//div[@id='divDadosPontuacao']/table[position()<2]//td/text()").get()
+		user_data = {'cpf:':data_arr[0],'registro':data_arr[1],'periodo':data_arr[2],'Nome':name}
+		return user_data
 
 if __name__ == "__main__":
     crawler()
